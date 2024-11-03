@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3 Force Layout with Drag Sound</title>
+    <style>
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.9;
+        }
+        .node circle, .central-node circle {
+            fill: #69b3a2;
+            stroke: #000;
+            stroke-width: 1px;
+            transition: fill 0.3s, r 0.3s;
+        }
+        .central-node circle {
+            fill: #ff6347;
+            stroke-width: 2px;
+        }
+        .node circle:hover, .central-node circle:hover {
+            fill: #ffa500; /* Change color on hover */
+            r: 45px; /* Slightly increase the size on hover */
+        }
+        text {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            fill: white;
+            text-anchor: middle;
+            alignment-baseline: central;
+        }
+    </style>
+</head>
+<body>
+
+<!-- <script src="https://d3js.org/d3.v3.min.js"></script> -->
+<script>
+    var centralNodeName = "profile"; // Change this to any name dynamically
+
+    var width = 800,
+        height = 600;
+
+    // Create audio element for drag sound
+    var dragSound = new Audio("drag-sound.mp3"); // Load your sound file here
+
+    // Define the nodes, using the centralNodeName variable for the central node
+    var nodes = {};
+    nodes[centralNodeName] = { name: centralNodeName, radius: 40 };
+    nodes['HTML'] = { name: 'HTML', radius: 20 };
+    nodes['CSS'] = { name: 'CSS', radius: 20 };
+    nodes['JavaScript'] = { name: 'JavaScript', radius: 30 };
+    nodes['React JS'] = { name: 'React JS', radius: 25 };
+    nodes['Node JS'] = { name: 'Node JS', radius: 25 };
+    nodes['Python'] = { name: 'Python', radius: 30 };
+    nodes['Django'] = { name: 'Django', radius: 20 };
+    nodes['Flask'] = { name: 'Flask', radius: 20 };
+    nodes['C++'] = { name: 'C++', radius: 25 };
+    nodes['Java'] = { name: 'Java', radius: 25 };
+    nodes['Spring'] = { name: 'Spring', radius: 20 };
+    nodes['Hibernate'] = { name: 'Hibernate', radius: 20 };
+
+    // Define the links
+    var links = [
+        { source: centralNodeName, target: 'HTML', thickness: 2, distance: 150 },
+        { source: centralNodeName, target: 'CSS', thickness: 2, distance: 100 },
+        { source: centralNodeName, target: 'JavaScript', thickness: 3, distance: 200 },
+        { source: 'JavaScript', target: 'React JS', thickness: 2, distance: 100 },
+        { source: 'JavaScript', target: 'Node JS', thickness: 2, distance: 150 },
+        { source: centralNodeName, target: 'Python', thickness: 3, distance: 200 },
+        { source: 'Python', target: 'Django', thickness: 2, distance: 100 },
+        { source: 'Python', target: 'Flask', thickness: 2, distance: 120 },
+        { source: centralNodeName, target: 'C++', thickness: 3, distance: 180 },
+        { source: centralNodeName, target: 'Java', thickness: 3, distance: 220 },
+        { source: 'Java', target: 'Spring', thickness: 2, distance: 100 },
+        { source: 'Spring', target: 'Hibernate', thickness: 2, distance: 80 }
+    ];
+
+    var nodeMap = {};
+
+    // Compute nodes from links data
+    links.forEach(function(link) {
+        link.source = nodeMap[link.source] || (nodeMap[link.source] = { name: link.source, radius: nodes[link.source].radius });
+        link.target = nodeMap[link.target] || (nodeMap[link.target] = { name: link.target, radius: nodes[link.target].radius });
+    });
+
+    var svg = d3.select('body').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+    var force = d3.layout.force()
+        .size([width, height])
+        .nodes(d3.values(nodeMap))
+        .links(links)
+        .linkDistance(function(d) { return d.distance; })
+        .charge(-500)
+        .on("tick", tick)
+        .start();
+
+    var link = svg.selectAll('.link')
+        .data(links)
+        .enter().append('line')
+        .attr('class', 'link')
+        .attr('stroke-width', function(d) { return d.thickness || 1; });
+
+    var node = svg.selectAll('.node')
+        .data(force.nodes())
+        .enter().append('g')
+        .attr('class', function(d) { return d.name === centralNodeName ? 'central-node' : 'node'; })
+        .call(force.drag);
+
+    // Play sound when dragging starts and during dragging
+    force.drag()
+        .on("dragstart", function(d) { dragSound.play(); })
+        .on("drag", function(d) { dragSound.play(); });
+
+    node.append('circle')
+        .attr('r', function(d) { return d.radius; });
+
+    node.append('text')
+        .text(function(d) { return d.name; });
+
+    function tick() {
+        link.attr('x1', function(d) { return d.source.x; })
+            .attr('y1', function(d) { return d.source.y; })
+            .attr('x2', function(d) { return d.target.x; })
+            .attr('y2', function(d) { return d.target.y; });
+
+        node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+    }
+</script>
+</body>
+</html>
