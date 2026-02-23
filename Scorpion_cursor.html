@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skeletal Scorpion Cursor</title>
+    <style>
+        /* Keep the background dark and hide scrollbars so it feels like a full screen */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d0d12;
+            cursor: none; /* Hides the default mouse cursor */
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    // Make canvas fill the screen
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Track mouse position
+    const mouse = { x: width / 2, y: height / 2 };
+    window.addEventListener('mousemove', e => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+    });
+
+    // Touch support for mobile
+    window.addEventListener('touchmove', e => {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
+    });
+
+    // Inverse Kinematics Skeleton Class
+    class SkeletonChain {
+        constructor(numSegments, segmentLength) {
+            this.numSegments = numSegments;
+            this.segmentLength = segmentLength;
+            this.segments = [];
+            // Initialize segments at the center
+            for (let i = 0; i < numSegments; i++) {
+                this.segments.push({ x: mouse.x, y: mouse.y, angle: 0 });
+            }
+        }
+
+        update(targetX, targetY) {
+            // The head follows the mouse
+            this.segments[0].x = targetX;
+            this.segments[0].y = targetY;
+
+            // Each subsequent joint pulls toward the one in front of it
+            for (let i = 1; i < this.numSegments; i++) {
+                let dx = this.segments[i - 1].x - this.segments[i].x;
+                let dy = this.segments[i - 1].y - this.segments[i].y;
+                let angle = Math.atan2(dy, dx);
+                
+                this.segments[i].angle = angle;
+                this.segments[i].x = this.segments[i - 1].x - Math.cos(angle) * this.segmentLength;
+                this.segments[i].y = this.segments[i - 1].y - Math.sin(angle) * this.segmentLength;
+            }
+        }
+
+        draw(ctx) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; // Slightly transparent white
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // 1. Draw the Spine
+            ctx.beginPath();
+            ctx.moveTo(this.segments[0].x, this.segments[0].y);
+            for (let i = 1; i < this.numSegments; i++) {
+                ctx.lineTo(this.segments[i].x, this.segments[i].y);
+            }
+            ctx.stroke();
+
+            // 2. Draw the Legs/Ribs (Spaced out every 3 segments)
+            for (let i = 2; i < this.numSegments - 5; i += 3) {
+                let seg = this.segments[i];
+                
+                // Create a smooth curve for leg sizes (fat in the middle, small at tail/head)
+                let scale = Math.sin((i / this.numSegments) * Math.PI);
+                let legSize = 10 + (scale * 20); 
+                
+                // Angles pushing outward and slightly backward
+                let leftAngle = seg.angle - Math.PI / 2.5;
+                let rightAngle = seg.angle + Math.PI / 2.5;
+
+                // Left Leg (Jointed)
+                let kneeXLeft = seg.x + Math.cos(leftAngle) * legSize;
+                let kneeYLeft = seg.y + Math.sin(leftAngle) * legSize;
+                let footXLeft = kneeXLeft + Math.cos(leftAngle - 0.8) * legSize * 0.7;
+                let footYLeft = kneeYLeft + Math.sin(leftAngle - 0.8) * legSize * 0.7;
+
+                ctx.beginPath();
+                ctx.moveTo(seg.x, seg.y);
+                ctx.lineTo(kneeXLeft, kneeYLeft);
+                ctx.lineTo(footXLeft, footYLeft);
+                ctx.stroke();
+                
+                // Draw little dots at the joints for the skeletal look
+                ctx.beginPath();
+                ctx.arc(footXLeft, footYLeft, 1.5, 0, Math.PI*2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+
+                // Right Leg (Jointed)
+                let kneeXRight = seg.x + Math.cos(rightAngle) * legSize;
+                let kneeYRight = seg.y + Math.sin(rightAngle) * legSize;
+                let footXRight = kneeXRight + Math.cos(rightAngle + 0.8) * legSize * 0.7;
+                let footYRight = kneeYRight + Math.sin(rightAngle + 0.8) * legSize * 0.7;
+
+                ctx.beginPath();
+                ctx.moveTo(seg.x, seg.y);
+                ctx.lineTo(kneeXRight, kneeYRight);
+                ctx.lineTo(footXRight, footYRight);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(footXRight, footYRight, 1.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // 3. Draw the Head
+            let head = this.segments[0];
+            ctx.beginPath();
+            ctx.arc(head.x, head.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+        }
+    }
+
+    // Create a new creature: 40 segments long, 8 pixels between each segment
+    const scorpion = new SkeletonChain(40, 8);
+
+    // Animation Loop
+    function animate() {
+        // Clear the canvas every frame
+        ctx.clearRect(0, 0, width, height);
+        
+        // Update math and redraw
+        scorpion.update(mouse.x, mouse.y);
+        scorpion.draw(ctx);
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+
+</body>
+</html>
